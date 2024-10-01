@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Dinero</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 20px;
+        }
+        #total, #diferencia, #fechaHora {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        canvas {
+            display: none; /* Esconder el canvas en la vista */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Calculadora de Dinero</h1>
+        
+        <div id="fechaHora" class="text-center"></div>
+
+        <h2>Billetes</h2>
+        <div class="form-group">
+            <label>Billetes de 200: <input type="number" class="form-control" id="billetes200" value="0"></label>
+            <label>Billetes de 100: <input type="number" class="form-control" id="billetes100" value="0"></label>
+            <label>Billetes de 50: <input type="number" class="form-control" id="billetes50" value="0"></label>
+            <label>Billetes de 20: <input type="number" class="form-control" id="billetes20" value="0"></label>
+            <label>Billetes de 10: <input type="number" class="form-control" id="billetes10" value="0"></label>
+            <label>Billetes de 5: <input type="number" class="form-control" id="billetes5" value="0"></label>
+            <label>Billetes de 1: <input type="number" class="form-control" id="billetes1" value="0"></label>
+        </div>
+
+        <h2>Monedas</h2>
+        <div class="form-group">
+            <label>Monedas de 1: <input type="number" class="form-control" id="monedas1" value="0"></label>
+            <label>Monedas de 0.5: <input type="number" class="form-control" id="monedas05" value="0"></label>
+            <label>Monedas de 0.25: <input type="number" class="form-control" id="monedas025" value="0"></label>
+            <label>Monedas de 0.10: <input type="number" class="form-control" id="monedas010" value="0"></label>
+            <label>Monedas de 0.05: <input type="number" class="form-control" id="monedas005" value="0"></label>
+        </div>
+
+        <button class="btn btn-primary btn-block" onclick="calcularTotal()">Calcular Total</button>
+        
+        <div id="total" class="text-center"></div>
+
+        <h2 class="mt-4">Resta</h2>
+        <div class="form-group">
+            <label>Introduzca un valor a restar: <input type="number" class="form-control" id="valorRestar" value="0"></label>
+        </div>
+        
+        <button class="btn btn-danger btn-block" onclick="calcularDiferencia()">Calcular Diferencia</button>
+        
+        <div id="diferencia" class="text-center"></div>
+
+        <button class="btn btn-success btn-block mt-4" onclick="guardarPDF()">Guardar como PDF</button>
+
+        <canvas id="grafica" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        let chart;
+
+        function mostrarFechaHora() {
+            const ahora = new Date();
+            const opciones = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const fechaHora = ahora.toLocaleDateString('es-ES', opciones);
+            document.getElementById('fechaHora').innerText = 'Fecha y Hora: ' + fechaHora;
+        }
+
+        function calcularTotal() {
+            const billetes200 = parseInt(document.getElementById('billetes200').value) || 0;
+            const billetes100 = parseInt(document.getElementById('billetes100').value) || 0;
+            const billetes50 = parseInt(document.getElementById('billetes50').value) || 0;
+            const billetes20 = parseInt(document.getElementById('billetes20').value) || 0;
+            const billetes10 = parseInt(document.getElementById('billetes10').value) || 0;
+            const billetes5 = parseInt(document.getElementById('billetes5').value) || 0;
+            const billetes1 = parseInt(document.getElementById('billetes1').value) || 0;
+
+            const monedas1 = parseInt(document.getElementById('monedas1').value) || 0;
+            const monedas05 = parseInt(document.getElementById('monedas05').value) || 0;
+            const monedas025 = parseInt(document.getElementById('monedas025').value) || 0;
+            const monedas010 = parseInt(document.getElementById('monedas010').value) || 0;
+            const monedas005 = parseInt(document.getElementById('monedas005').value) || 0;
+
+            const totalBilletes = (billetes200 * 200) + (billetes100 * 100) + (billetes50 * 50) + 
+                                  (billetes20 * 20) + (billetes10 * 10) + (billetes5 * 5) + 
+                                  (billetes1 * 1);
+
+            const totalMonedas = (monedas1 * 1) + (monedas05 * 0.5) + (monedas025 * 0.25) + 
+                                 (monedas010 * 0.10) + (monedas005 * 0.05);
+
+            const totalGeneral = totalBilletes + totalMonedas;
+
+            document.getElementById('total').innerText = 'Total de dinero: ' + totalGeneral.toFixed(2);
+
+            // Actualizar la gráfica
+            actualizarGrafica(billetes200, billetes100, billetes50, billetes20, billetes10, billetes5, billetes1, 
+                              monedas1, monedas05, monedas025, monedas010, monedas005);
+        }
+
+        function calcularDiferencia() {
+            const totalTexto = document.getElementById('total').innerText;
+            const total = parseFloat(totalTexto.replace('Total de dinero: ', '')) || 0;
+            const valorRestar = parseFloat(document.getElementById('valorRestar').value) || 0;
+
+            const diferencia = total - valorRestar;
+
+            document.getElementById('diferencia').innerText = 'Diferencia: ' + diferencia.toFixed(2);
+        }
+
+        function actualizarGrafica(b200, b100, b50, b20, b10, b5, b1, m1, m05, m025, m010, m005) {
+            const ctx = document.getElementById('grafica').getContext('2d');
+            const data = {
+                labels: ['Billetes 200', 'Billetes 100', 'Billetes 50', 'Billetes 20', 'Billetes 10', 'Billetes 5', 'Billetes 1',
+                         'Monedas 1', 'Monedas 0.5', 'Monedas 0.25', 'Monedas 0.10', 'Monedas 0.05'],
+                datasets: [{
+                    label: 'Cantidad',
+                    data: [b200, b100, b50, b20, b10, b5, b1, m1, m05, m025, m010, m005],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            };
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function guardarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const azulPrimario = '#007BFF';
+            const azulClaro = '#D0E9FF';
+            const negroSuave = '#333';
+
+            const totalTexto = document.getElementById('total').innerText;
+            const diferenciaTexto = document.getElementById('diferencia').innerText;
+
+            const ahora = new Date();
+            const opciones = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const fechaHora = ahora.toLocaleDateString('es-ES', opciones);
+
+            const billetes200 = parseInt(document.getElementById('billetes200').value) || 0;
+            const billetes100 = parseInt(document.getElementById('billetes100').value) || 0;
+            const billetes50 = parseInt(document.getElementById('billetes50').value) || 0;
+            const billetes20 = parseInt(document.getElementById('billetes20').value) || 0;
+            const billetes10 = parseInt(document.getElementById('billetes10').value) || 0;
+            const billetes5 = parseInt(document.getElementById('billetes5').value) || 0;
+            const billetes1 = parseInt(document.getElementById('billetes1').value) || 0;
+
+            const monedas1 = parseInt(document.getElementById('monedas1').value) || 0;
+            const monedas05 = parseInt(document.getElementById('monedas05').value) || 0;
+            const monedas025 = parseInt(document.getElementById('monedas025').value) || 0;
+            const monedas010 = parseInt(document.getElementById('monedas010').value) || 0;
+            const monedas005 = parseInt(document.getElementById('monedas005').value) || 0;
+
+            // Título principal
+            doc.setFontSize(22);
+            doc.setTextColor(azulPrimario);
+            doc.setFont('helvetica', 'bold');
+            doc.text('RESUMEN DE DINERO', 105, 20, { align: 'center' });
+
+            // Agregar fecha y hora
+            doc.setFontSize(12);
+            doc.setTextColor(negroSuave);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Fecha y Hora: ' + fechaHora, 10, 30);
+
+            // Línea divisora
+            doc.setDrawColor(azulPrimario);
+            doc.line(10, 35, 200, 35);
+
+            // Billetes - sección con fondo azul claro
+            doc.setFillColor(azulClaro);
+            doc.rect(10, 40, 190, 10, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(azulPrimario);
+            doc.text('BILLETES', 15, 47);
+
+            // Crear tabla de billetes
+            doc.autoTable({
+                margin: { top: 50 },
+                head: [['Denominación', 'Cantidad']],
+                body: [
+                    ['200', billetes200],
+                    ['100', billetes100],
+                    ['50', billetes50],
+                    ['20', billetes20],
+                    ['10', billetes10],
+                    ['5', billetes5],
+                    ['1', billetes1]
+                ],
+                theme: 'grid',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 10,
+                    textColor: negroSuave
+                },
+                headStyles: {
+                    fillColor: azulPrimario,
+                    textColor: 'white'
+                }
+            });
+
+            // Monedas - sección con fondo azul claro
+            doc.setFillColor(azulClaro);
+            doc.rect(10, doc.autoTable.previous.finalY + 10, 190, 10, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(azulPrimario);
+            doc.text('MONEDAS', 15, doc.autoTable.previous.finalY + 17);
+
+            // Crear tabla de monedas
+            doc.autoTable({
+                margin: { top: doc.autoTable.previous.finalY + 20 },
+                head: [['Denominación', 'Cantidad']],
+                body: [
+                    ['1', monedas1],
+                    ['0.5', monedas05],
+                    ['0.25', monedas025],
+                    ['0.10', monedas010],
+                    ['0.05', monedas005]
+                ],
+                theme: 'grid',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 10,
+                    textColor: negroSuave
+                },
+                headStyles: {
+                    fillColor: azulPrimario,
+                    textColor: 'white'
+                }
+            });
+
+            // Línea divisora
+            doc.setDrawColor(azulPrimario);
+            doc.line(10, doc.autoTable.previous.finalY + 10, 200, doc.autoTable.previous.finalY + 10);
+
+            // Resultados finales
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(azulPrimario);
+            doc.text(totalTexto, 15, doc.autoTable.previous.finalY + 20);
+            doc.text(diferenciaTexto, 15, doc.autoTable.previous.finalY + 30);
+
+            // Gráfico de barras
+            const canvas = document.getElementById('grafica');
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 15, doc.autoTable.previous.finalY + 40, 180, 70);
+
+            // Guardar PDF
+            doc.save('resultado_calculadora.pdf');
+        }
+
+        window.onload = mostrarFechaHora;
+    </script>
+</body>
+</html>
